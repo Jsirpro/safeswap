@@ -11,7 +11,7 @@
   IMPORTANT: User stories should be PRIORITIZED as user journeys ordered by importance.
   Each user story/journey must be INDEPENDENTLY TESTABLE - meaning if you implement just ONE of them,
   you should still have a viable MVP (Minimum Viable Product) that delivers value.
-  
+
   Assign priorities (P1, P2, P3, etc.) to each story, where P1 is the most critical.
   Think of each story as a standalone slice of functionality that can be:
   - Developed independently
@@ -72,8 +72,11 @@
   Fill them out with the right edge cases.
 -->
 
-- What happens when [boundary condition]?
-- How does system handle [error scenario]?
+- What happens when intent parsing succeeds but validation fails?
+- How does the system block execution when guardian findings are CRITICAL?
+- How is stale or incomplete quote data prevented from reaching PTB compilation?
+- What happens when the user rejects confirmation after preview generation?
+- How does mock mode behave without invoking the wallet?
 
 ## Requirements *(mandatory)*
 
@@ -84,21 +87,23 @@
 
 ### Functional Requirements
 
-- **FR-001**: System MUST [specific capability, e.g., "allow users to create accounts"]
-- **FR-002**: System MUST [specific capability, e.g., "validate email addresses"]  
-- **FR-003**: Users MUST be able to [key interaction, e.g., "reset their password"]
-- **FR-004**: System MUST [data requirement, e.g., "persist user preferences"]
-- **FR-005**: System MUST [behavior, e.g., "log all security events"]
-
-*Example of marking unclear requirements:*
-
-- **FR-006**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
-- **FR-007**: System MUST retain user data for [NEEDS CLARIFICATION: retention period not specified]
+- **FR-001**: System MUST transform natural-language swap requests into a structured intent schema before any quote, PTB, or wallet action occurs.
+- **FR-002**: System MUST validate supported scope, assets, amounts, and exact-input constraints before quote generation.
+- **FR-003**: System MUST generate a quote and compile a PTB only from validated intent data.
+- **FR-004**: System MUST run deterministic guardian checks before any signing permission is issued.
+- **FR-005**: System MUST generate a human-readable preview covering wallet outflows, inflows, expected output, minimum output, route, failure conditions, and guardian findings.
+- **FR-006**: System MUST require explicit user confirmation before wallet signing becomes available.
+- **FR-007**: System MUST prevent direct paths from chat, AI output, intent, quote, or PTB stages to the wallet.
+- **FR-008**: System MUST support mock execution paths for testing without real wallet signing.
 
 ### Key Entities *(include if feature involves data)*
 
-- **[Entity 1]**: [What it represents, key attributes without implementation]
-- **[Entity 2]**: [What it represents, relationships to other entities]
+- **SwapIntent**: User goal translated from natural language into deterministic swap inputs and constraints.
+- **Quote**: Deterministic execution quote derived from a validated intent.
+- **SwapContext**: Validation, quote, PTB, and market data bundle used by guardian checks.
+- **GuardianFindings**: Severity-ranked risk results that can inform or block execution.
+- **HumanReadablePreview**: User-facing explanation of the transaction and its failure conditions.
+- **ExecutionPermission**: Explicit post-confirmation decision that allows wallet signing.
 
 ## Success Criteria *(mandatory)*
 
@@ -109,10 +114,10 @@
 
 ### Measurable Outcomes
 
-- **SC-001**: [Measurable metric, e.g., "Users can complete account creation in under 2 minutes"]
-- **SC-002**: [Measurable metric, e.g., "System handles 1000 concurrent users without degradation"]
-- **SC-003**: [User satisfaction metric, e.g., "90% of users successfully complete primary task on first attempt"]
-- **SC-004**: [Business metric, e.g., "Reduce support tickets related to [X] by 50%"]
+- **SC-001**: 100% of supported swap flows produce a structured intent before quote generation.
+- **SC-002**: 100% of signing attempts are preceded by guardian review and explicit confirmation.
+- **SC-003**: 100% of PTBs presented for signing include a human-readable preview with required fields.
+- **SC-004**: 100% of mock-mode test runs complete without invoking a live wallet signature.
 
 ## Assumptions
 
@@ -122,7 +127,7 @@
   chosen when the feature description did not specify certain details.
 -->
 
-- [Assumption about target users, e.g., "Users have stable internet connectivity"]
-- [Assumption about scope boundaries, e.g., "Mobile support is out of scope for v1"]
-- [Assumption about data/environment, e.g., "Existing authentication system will be reused"]
-- [Dependency on existing system/service, e.g., "Requires access to the existing user profile API"]
+- Exact-input swaps are the only in-scope transaction type unless the constitution is amended.
+- Deterministic quote, guardian, and PTB components are available or can be mocked for development.
+- Wallet signing remains the final step and is never treated as implied consent.
+- Bridge, lending, yield, perps, LP management, and autonomous trading remain out of scope for v1.

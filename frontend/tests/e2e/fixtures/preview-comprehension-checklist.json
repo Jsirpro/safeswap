@@ -1,0 +1,14 @@
+
+{
+  "scenario": "SC-005 bilingual preview comprehension",
+  "requiredItems": [
+    "wallet outflow is understandable in English",
+    "wallet inflow is understandable in English",
+    "wallet outflow is understandable in Chinese",
+    "wallet inflow is understandable in Chinese",
+    "minimum output is clearly identified",
+    "failure conditions are visible",
+    "guardian findings are visible when present"
+  ],
+  "passThreshold": 6
+}

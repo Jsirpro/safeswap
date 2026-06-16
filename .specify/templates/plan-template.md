@@ -31,7 +31,14 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- [ ] Intent-first architecture is preserved: `Intent -> Validate -> Quote -> PTB -> Guardian -> Preview -> Confirm -> Wallet`.
+- [ ] No direct path exists from chat, AI output, intent, quote, or PTB stages to the wallet.
+- [ ] The design includes all four mandatory controls: Intent, PTB, Guardian, and Confirmation.
+- [ ] Critical logic remains deterministic; AI is limited to parsing, explanation, and translation.
+- [ ] Human-readable preview requirements are defined for wallet inputs, outputs, route, minimum output, failure conditions, and guardian findings.
+- [ ] Delivery order is explicit: schema, contracts, tests, then implementation.
+- [ ] Test coverage includes intent, validation, PTB, guardian, preview, confirmation, failure handling, and mock mode.
+- [ ] MVP scope remains limited to exact-input swaps unless the constitution is amended.
 
 ## Project Structure
 
@@ -60,7 +67,9 @@ specs/[###-feature]/
 src/
 ├── models/
 ├── services/
-├── cli/
+├── guardian/
+├── preview/
+├── transactions/
 └── lib/
 
 tests/
@@ -73,6 +82,8 @@ backend/
 ├── src/
 │   ├── models/
 │   ├── services/
+│   ├── guardian/
+│   ├── preview/
 │   └── api/
 └── tests/
 

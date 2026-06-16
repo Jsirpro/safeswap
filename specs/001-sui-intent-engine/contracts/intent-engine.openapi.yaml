@@ -1,0 +1,355 @@
+openapi: 3.1.0
+info:
+  title: SafeSwap Intent Engine API
+  version: 0.1.0
+  description: >-
+    Contract for the SafeSwap MVP intent engine. The API preserves the required
+    guarded flow: parse -> validate -> quote -> guardian -> preview -> confirm.
+servers:
+  - url: https://api.safeswap.local
+paths:
+  /api/intents/parse:
+    post:
+      summary: Parse and validate a natural-language swap request
+      operationId: parseIntent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ParseIntentRequest'
+      responses:
+        '200':
+          description: Parsed intent accepted for next step
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParseIntentResponse'
+        '422':
+          description: Invalid, unsupported, or unverifiable request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlowError'
+  /api/intents/{intentId}/quote:
+    post:
+      summary: Fetch a quote for a validated intent
+      operationId: createQuote
+      parameters:
+        - $ref: '#/components/parameters/IntentId'
+      responses:
+        '200':
+          description: Quote and guardian result created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuoteResponse'
+        '409':
+          description: Intent not eligible for quoting
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlowError'
+  /api/intents/{intentId}/preview:
+    post:
+      summary: Generate a localized preview for an active quote
+      operationId: createPreview
+      parameters:
+        - $ref: '#/components/parameters/IntentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [language]
+              properties:
+                language:
+                  type: string
+                  enum: [en, zh]
+      responses:
+        '200':
+          description: Preview ready for confirmation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PreviewResponse'
+        '409':
+          description: Quote expired or guardian blocked the flow
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlowError'
+  /api/intents/{intentId}/confirm:
+    post:
+      summary: Explicitly confirm a preview and request wallet handoff permission
+      operationId: confirmPreview
+      parameters:
+        - $ref: '#/components/parameters/IntentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmRequest'
+      responses:
+        '200':
+          description: Confirmation accepted and wallet handoff allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfirmResponse'
+        '409':
+          description: Preview no longer valid for confirmation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlowError'
+  /api/intents/{intentId}/refresh:
+    post:
+      summary: Refresh a quote after expiry or invalidation
+      operationId: refreshQuote
+      parameters:
+        - $ref: '#/components/parameters/IntentId'
+      responses:
+        '200':
+          description: Flow refreshed with a new quote
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuoteResponse'
+        '409':
+          description: Intent must be re-parsed or re-validated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlowError'
+components:
+  parameters:
+    IntentId:
+      name: intentId
+      in: path
+      required: true
+      schema:
+        type: string
+  schemas:
+    ParseIntentRequest:
+      type: object
+      required: [sourceText]
+      properties:
+        sourceText:
+          type: string
+        inputLanguage:
+          type: string
+          enum: [en, zh]
+          description: Optional override; defaults to detected input language.
+        outputLanguage:
+          type: string
+          enum: [en, zh]
+          description: Optional output language selection.
+    ParseIntentResponse:
+      type: object
+      required: [intentId, status, ambiguityStatus, intent]
+      properties:
+        intentId:
+          type: string
+        status:
+          type: string
+          enum: [parsed, validated]
+        ambiguityStatus:
+          type: string
+          enum: [clear, needs_confirmation]
+        intent:
+          $ref: '#/components/schemas/SwapIntent'
+        validation:
+          $ref: '#/components/schemas/ValidationResult'
+    QuoteResponse:
+      type: object
+      required: [intentId, quote, guardian]
+      properties:
+        intentId:
+          type: string
+        quote:
+          $ref: '#/components/schemas/Quote'
+        guardian:
+          $ref: '#/components/schemas/GuardianReport'
+    PreviewResponse:
+      type: object
+      required: [intentId, preview, quoteExpiresAt, canConfirm]
+      properties:
+        intentId:
+          type: string
+        preview:
+          $ref: '#/components/schemas/HumanReadablePreview'
+        quoteExpiresAt:
+          type: string
+          format: date-time
+        canConfirm:
+          type: boolean
+    ConfirmRequest:
+      type: object
+      required: [previewId, confirmed]
+      properties:
+        previewId:
+          type: string
+        confirmed:
+          type: boolean
+          enum: [true]
+    ConfirmResponse:
+      type: object
+      required: [intentId, permissionGranted, walletPayload]
+      properties:
+        intentId:
+          type: string
+        permissionGranted:
+          type: boolean
+        walletPayload:
+          type: object
+          required: [ptbId, serializedTransaction]
+          properties:
+            ptbId:
+              type: string
+            serializedTransaction:
+              type: string
+    FlowError:
+      type: object
+      required: [code, message, retryable]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        retryable:
+          type: boolean
+    SwapIntent:
+      type: object
+      required:
+        - intentId
+        - sourceText
+        - inputLanguage
+        - outputLanguage
+        - inputAssetSymbol
+        - outputAssetSymbol
+        - inputAmount
+        - swapMode
+        - ambiguityStatus
+      properties:
+        intentId:
+          type: string
+        sourceText:
+          type: string
+        inputLanguage:
+          type: string
+          enum: [en, zh]
+        outputLanguage:
+          type: string
+          enum: [en, zh]
+        inputAssetSymbol:
+          type: string
+        outputAssetSymbol:
+          type: string
+        inputAmount:
+          type: string
+        swapMode:
+          type: string
+          enum: [exact_input]
+        ambiguityStatus:
+          type: string
+          enum: [clear, needs_confirmation]
+    ValidationResult:
+      type: object
+      required: [isValid, whitelistVersion, validatedAt]
+      properties:
+        isValid:
+          type: boolean
+        failureCode:
+          type: string
+          nullable: true
+        failureMessage:
+          type: string
+          nullable: true
+        whitelistVersion:
+          type: string
+        validatedAt:
+          type: string
+          format: date-time
+    Quote:
+      type: object
+      required:
+        - quoteId
+        - expectedOutputAmount
+        - minimumOutputAmount
+        - routeSummary
+        - expiresAt
+      properties:
+        quoteId:
+          type: string
+        expectedOutputAmount:
+          type: string
+        minimumOutputAmount:
+          type: string
+        routeSummary:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+    GuardianReport:
+      type: object
+      required: [overallSeverity, canProceedToPreview, findings]
+      properties:
+        overallSeverity:
+          type: string
+          enum: [info, warning, critical]
+        canProceedToPreview:
+          type: boolean
+        findings:
+          type: array
+          items:
+            $ref: '#/components/schemas/GuardianFinding'
+    GuardianFinding:
+      type: object
+      required: [severity, category, message, blocking]
+      properties:
+        severity:
+          type: string
+          enum: [info, warning, critical]
+        category:
+          type: string
+        message:
+          type: string
+        blocking:
+          type: boolean
+    HumanReadablePreview:
+      type: object
+      required:
+        - previewId
+        - language
+        - walletOutflowText
+        - walletInflowText
+        - expectedOutputText
+        - minimumOutputText
+        - routeText
+        - failureConditionsText
+        - guardianFindingsText
+      properties:
+        previewId:
+          type: string
+        language:
+          type: string
+          enum: [en, zh]
+        walletOutflowText:
+          type: string
+        walletInflowText:
+          type: string
+        expectedOutputText:
+          type: string
+        minimumOutputText:
+          type: string
+        routeText:
+          type: string
+        failureConditionsText:
+          type: string
+        guardianFindingsText:
+          type: array
+          items:
+            type: string
