@@ -6,6 +6,12 @@ build/
 coverage/
 playwright-report/
 test-results/
+.turbo/
+.cache/
+*.tsbuildinfo
+.npm/
+.pnpm-store/
+.eslintcache
 .env*
 !.env.example
 .DS_Store
